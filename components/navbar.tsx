@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { useAuth } from '@/context/auth-context'
 import { Button } from '@/components/ui/button'
-import { LogOut, Menu, X, User } from 'lucide-react'
+import { LogOut, Menu, X, User, Sun, Moon } from 'lucide-react'
 import { useState } from 'react'
+import { useTheme } from 'next-themes'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +15,11 @@ import {
 export function Navbar() {
   const { user, isConnected, connectWallet, disconnectWallet } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { theme, setTheme } = useTheme()
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark')
+  }
 
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`
@@ -55,8 +61,20 @@ export function Navbar() {
             ) : null}
           </div>
 
-          {/* Auth Button */}
-          <div className="flex items-center gap-4">
+          {/* Theme Toggle & Auth Button */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Theme Toggle Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              className="h-9 w-9"
+              aria-label="Toggle theme"
+            >
+              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            </Button>
+
             {isConnected && user ? (
               <div className="flex items-center gap-3">
                 <span className="text-sm text-muted-foreground hidden sm:inline">
