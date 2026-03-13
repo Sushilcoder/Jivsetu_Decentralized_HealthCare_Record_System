@@ -755,7 +755,7 @@ export default function DoctorDashboard() {
                     onClick={() => setSelectedRecord(null)}
                     className="text-primary-foreground hover:bg-primary-foreground/20"
                   >
-                    ← Back to Records
+                    {'\u2190'} Back to Records
                   </Button>
                   <Button 
                     variant="ghost" 

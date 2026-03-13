@@ -52,7 +52,7 @@ export default function PatientConnectPage() {
         {/* Header */}
         <div className="mb-12">
           <Link href="/" className="text-muted-foreground hover:text-foreground mb-4 inline-block">
-            ← Back to Home
+            {'\u2190'} Back to Home
           </Link>
           <h1 className="text-5xl font-bold mb-3">Patient Medical Records</h1>
           <p className="text-xl text-muted-foreground">Manage your health data with complete control and privacy</p>

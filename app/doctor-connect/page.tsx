@@ -53,7 +53,7 @@ export default function DoctorConnectPage() {
         {/* Header */}
         <div className="mb-12">
           <Link href="/" className="text-muted-foreground hover:text-foreground mb-4 inline-block">
-            ← Back to Home
+            {'\u2190'} Back to Home
           </Link>
           <h1 className="text-5xl font-bold mb-3">Healthcare Provider Setup</h1>
           <p className="text-xl text-muted-foreground">Upload and manage encrypted medical reports securely</p>
