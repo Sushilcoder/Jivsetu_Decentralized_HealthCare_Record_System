@@ -8,13 +8,17 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Upload, AlertCircle, CheckCircle, File, Trash2, Loader, User, Search, FileText, Eye, Download, Share2 } from 'lucide-react'
+import { Upload, AlertCircle, CheckCircle, File, Trash2, Loader, User, Search, FileText, Eye, Download, Share2, Clock, Lock, Shield } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { FieldGroup, FieldLabel } from '@/components/ui/field'
 import { uploadFileToPinata, getIPFSUrl } from '@/lib/pinata'
-import { getPatientsWhoGrantedAccess, initializeMockAccessData } from '@/lib/access-storage'
+import { getPatientsWhoGrantedAccess, initializeMockAccessData, grantAccessToDoctor } from '@/lib/access-storage'
 import { storeReport, getPatientReports, downloadReport } from '@/lib/reports-storage'
 import { Badge } from '@/components/ui/badge'
+import { encryptFileToBlob, storeEncryptionMetadata } from '@/lib/encryption'
+import { logFileUpload, logFileView, logFileDownload } from '@/lib/access-log'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface UploadedReport {
   id: string
@@ -49,6 +53,9 @@ export default function DoctorDashboard() {
     description: '',
     file: null as File | null,
   })
+  const [showUploadDialog, setShowUploadDialog] = useState(false)
+  const [selectedUploadPatient, setSelectedUploadPatient] = useState<any | null>(null)
+  const [encryptionEnabled, setEncryptionEnabled] = useState(true)
 
   useEffect(() => {
     if (user?.address) {
@@ -100,21 +107,46 @@ export default function DoctorDashboard() {
         throw new Error('Please enter a valid Ethereum address for the patient')
       }
 
-      console.log('[v0] Uploading report to Pinata...')
+      // Check if doctor has permission to upload for this patient
+      const hasPermission = patientsWithAccess.some(
+        p => p.patientAddress.toLowerCase() === formData.patientAddress.toLowerCase()
+      )
+      
+      if (!hasPermission) {
+        throw new Error('You do not have permission to upload records for this patient. Patient must grant you access first.')
+      }
+
+      let fileToUpload: File | Blob = formData.file
+      let encryptionMetadata = null
+
+      // Encrypt the file if encryption is enabled
+      if (encryptionEnabled) {
+        const { blob, encryptionMetadata: metadata } = await encryptFileToBlob(
+          formData.file,
+          formData.patientAddress
+        )
+        fileToUpload = new File([blob], formData.file.name + '.encrypted', { type: 'application/octet-stream' })
+        encryptionMetadata = metadata
+      }
 
       const uploadedFile = await uploadFileToPinata(
-        formData.file,
+        fileToUpload as File,
         {
           name: formData.reportTitle,
           patientAddress: formData.patientAddress,
           doctorAddress: user?.address || '',
           description: formData.description,
-          contentType: formData.file.type,
+          contentType: encryptionEnabled ? 'application/encrypted' : formData.file.type,
         },
         (progress) => {
           setUploadProgress(progress)
         }
       )
+
+      // Store encryption metadata if encrypted
+      if (encryptionMetadata) {
+        storeEncryptionMetadata(uploadedFile.hash, encryptionMetadata)
+      }
 
       const newReport: UploadedReport = {
         id: uploadedFile.hash,
@@ -143,7 +175,17 @@ export default function DoctorDashboard() {
         uploadTimestamp: Date.now(),
         fileSize: `${(formData.file.size / 1024 / 1024).toFixed(2)}MB`,
         contentType: formData.file.type || 'application/octet-stream',
-      })
+        encrypted: encryptionEnabled,
+      } as any)
+
+      // Log the upload event
+      logFileUpload(
+        formData.patientAddress,
+        user?.address || '',
+        uploadedFile.hash,
+        formData.reportTitle
+      )
+
       setFormData({
         patientName: '',
         patientAddress: '',
@@ -151,6 +193,8 @@ export default function DoctorDashboard() {
         description: '',
         file: null,
       })
+      setShowUploadDialog(false)
+      setSelectedUploadPatient(null)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (err) {
@@ -216,6 +260,42 @@ export default function DoctorDashboard() {
     setSelectedRecord(null)
   }
 
+  const handleUploadForPatient = (patient: any) => {
+    setSelectedUploadPatient(patient)
+    setFormData({
+      ...formData,
+      patientName: patient.patientName || patient.name,
+      patientAddress: patient.patientAddress || patient.address,
+    })
+    setShowUploadDialog(true)
+  }
+
+  const handleDownloadWithLogging = (record: any) => {
+    // Log the download
+    logFileDownload(
+      record.patientAddress,
+      user?.address || '',
+      record.fileHash,
+      record.title
+    )
+    
+    // Create downloadable report
+    const fullReport = {
+      id: record.id,
+      ipfsHash: record.fileHash,
+      patientAddress: record.patientAddress,
+      patientName: record.patientName,
+      doctorAddress: record.doctorAddress,
+      doctorName: record.doctor,
+      reportTitle: record.title,
+      description: record.details,
+      uploadedAt: record.date,
+      uploadTimestamp: Date.now(),
+      fileSize: 'N/A',
+    }
+    downloadReport(fullReport)
+  }
+
   return (
     <div className="min-h-screen px-4 py-12">
       <div className="max-w-6xl mx-auto">
@@ -245,11 +325,86 @@ export default function DoctorDashboard() {
           </Alert>
         )}
 
-        <Tabs defaultValue="upload" className="w-full">
+        <Tabs defaultValue="patients" className="w-full">
           <TabsList className="mb-8">
+            <TabsTrigger value="patients">My Patients</TabsTrigger>
             <TabsTrigger value="upload">Upload Reports</TabsTrigger>
-            <TabsTrigger value="view">View Patient Records</TabsTrigger>
+            <TabsTrigger value="view">Search Patients</TabsTrigger>
           </TabsList>
+
+          {/* My Patients Tab - Shows patients who granted access */}
+          <TabsContent value="patients" className="space-y-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold">Authorized Patients</h2>
+                <p className="text-muted-foreground">Patients who have granted you access to their records</p>
+              </div>
+              <Badge variant="secondary">{patientsWithAccess.length} Patients</Badge>
+            </div>
+
+            {patientsWithAccess.length === 0 ? (
+              <Card className="p-12 text-center">
+                <User className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground">No patients have granted you access yet</p>
+                <p className="text-sm text-muted-foreground mt-2">When patients grant you access, they will appear here</p>
+              </Card>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-4">
+                {patientsWithAccess.map((patient) => (
+                  <Card key={patient.patientAddress} className="p-6 hover:shadow-lg transition border-green-500/30 bg-green-500/5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
+                          <User className="w-6 h-6 text-green-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold">{patient.patientName}</h3>
+                          <p className="text-xs text-muted-foreground font-mono">{patient.patientAddress.slice(0, 10)}...{patient.patientAddress.slice(-6)}</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-green-600 hover:bg-green-700">Access Granted</Badge>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                      <span className="flex items-center gap-1">
+                        <FileText className="w-4 h-4" />
+                        {patient.recordCount} Records
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        Since {new Date(patient.grantedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <div className="flex gap-2 pt-4 border-t">
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        className="flex-1 gap-2"
+                        onClick={() => handleViewRecords({
+                          address: patient.patientAddress,
+                          name: patient.patientName,
+                          hasAccess: true,
+                        })}
+                      >
+                        <Eye className="w-4 h-4" />
+                        View Records
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 gap-2"
+                        onClick={() => handleUploadForPatient(patient)}
+                      >
+                        <Upload className="w-4 h-4" />
+                        Upload Record
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
 
           {/* Upload Reports Tab */}
           <TabsContent value="upload" className="space-y-6">
@@ -657,23 +812,7 @@ export default function DoctorDashboard() {
                   <Button 
                     className="flex-1" 
                     size="lg"
-                    onClick={() => {
-                      // Create downloadable report with all stored details
-                      const fullReport = {
-                        id: selectedRecord.id,
-                        ipfsHash: selectedRecord.fileHash,
-                        patientAddress: selectedRecord.patientAddress,
-                        patientName: selectedRecord.patientName,
-                        doctorAddress: selectedRecord.doctorAddress,
-                        doctorName: selectedRecord.doctor,
-                        reportTitle: selectedRecord.title,
-                        description: selectedRecord.details,
-                        uploadedAt: selectedRecord.date,
-                        uploadTimestamp: Date.now(),
-                        fileSize: 'N/A',
-                      }
-                      downloadReport(fullReport)
-                    }}
+                    onClick={() => handleDownloadWithLogging(selectedRecord)}
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Download Report
@@ -687,6 +826,153 @@ export default function DoctorDashboard() {
             </Card>
           </div>
         )}
+
+        {/* Upload Record Dialog */}
+        <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Upload className="w-5 h-5" />
+                Upload Medical Record
+              </DialogTitle>
+              <DialogDescription>
+                Upload a new medical record for {selectedUploadPatient?.patientName || selectedUploadPatient?.name}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <FieldGroup>
+                <FieldLabel>Patient</FieldLabel>
+                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                  <User className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">{formData.patientName}</p>
+                    <p className="text-xs text-muted-foreground font-mono">{formData.patientAddress}</p>
+                  </div>
+                </div>
+              </FieldGroup>
+
+              <FieldGroup>
+                <FieldLabel>Report Title</FieldLabel>
+                <Input
+                  name="reportTitle"
+                  value={formData.reportTitle}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Blood Test Report, X-Ray Results"
+                  required
+                />
+              </FieldGroup>
+
+              <FieldGroup>
+                <FieldLabel>Description</FieldLabel>
+                <Textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  placeholder="Add notes about this report..."
+                  rows={3}
+                />
+              </FieldGroup>
+
+              <FieldGroup>
+                <FieldLabel>Upload File</FieldLabel>
+                <label className="flex items-center justify-center border-2 border-dashed border-border rounded-lg p-6 hover:border-primary cursor-pointer transition">
+                  <div className="text-center">
+                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {formData.file ? formData.file.name : 'Click to upload or drag and drop'}
+                    </span>
+                    <p className="text-xs text-muted-foreground mt-1">PDF, DOC, JPG up to 100MB</p>
+                  </div>
+                  <input
+                    type="file"
+                    onChange={handleFileChange}
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    className="hidden"
+                  />
+                </label>
+                {formData.file && (
+                  <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4" />
+                    {formData.file.name}
+                  </p>
+                )}
+              </FieldGroup>
+
+              {/* Encryption Toggle */}
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-green-600" />
+                  <div>
+                    <p className="text-sm font-medium">AES-256 Encryption</p>
+                    <p className="text-xs text-muted-foreground">Encrypt file before upload</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={encryptionEnabled}
+                    onChange={(e) => setEncryptionEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                </label>
+              </div>
+
+              {uploadProgress > 0 && uploadProgress < 100 && (
+                <div className="bg-secondary rounded p-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium">Uploading...</span>
+                    <span className="text-xs">{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-border rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <Alert className="bg-red-500/10 border-red-500/20">
+                  <AlertCircle className="h-4 w-4 text-red-500" />
+                  <span className="text-red-700 dark:text-red-400">{error}</span>
+                </Alert>
+              )}
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowUploadDialog(false)
+                    setSelectedUploadPatient(null)
+                    setError(null)
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isLoading || !formData.file}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader className="w-4 h-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Upload Record
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
