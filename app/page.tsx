@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Shield, Lock, Share2, FileCheck, Users, Zap } from 'lucide-react'
+import { Shield, Lock, Share2, Users, Zap } from 'lucide-react'
 
 export default function HomePage() {
   return (
@@ -21,20 +21,8 @@ export default function HomePage() {
                 Jivsetu is a decentralized healthcare records system where doctors securely upload reports and patients maintain complete control over who can access their medical data.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/doctor/login">
-                  <Button size="lg" className="text-base w-full sm:w-auto">
-                    <FileCheck className="w-4 h-4 mr-2" />
-                    Doctor Login
-                  </Button>
-                </Link>
-                <Link href="/doctor/signup">
-                  <Button size="lg" variant="secondary" className="text-base w-full sm:w-auto">
-                    <FileCheck className="w-4 h-4 mr-2" />
-                    Doctor Signup
-                  </Button>
-                </Link>
                 <Link href="/patient-connect">
-                  <Button size="lg" variant="outline" className="text-base w-full sm:w-auto">
+                  <Button size="lg" className="text-base w-full sm:w-auto">
                     <Shield className="w-4 h-4 mr-2" />
                     Connect as Patient
                   </Button>

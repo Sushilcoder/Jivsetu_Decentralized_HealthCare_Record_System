@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { useAuth } from '@/context/auth-context'
 import { useDoctorAuth } from '@/context/doctor-auth-context'
 import { Button } from '@/components/ui/button'
-import { LogOut, Menu, X, User, Sun, Moon } from 'lucide-react'
+import { LogOut, Menu, X, User, Sun, Moon, LogIn } from 'lucide-react'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
@@ -71,7 +71,34 @@ export function Navbar() {
           </div>
 
           {/* Theme Toggle & Auth Button */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Doctor Auth Dropdown - Show when not logged in as doctor */}
+            {!session && !isConnected && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <LogIn className="w-4 h-4" />
+                    <span className="hidden sm:inline">Doctor</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link href="/doctor/login" className="cursor-pointer">
+                      <LogIn className="w-4 h-4 mr-2" />
+                      Doctor Login
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/doctor/signup" className="cursor-pointer">
+                      <User className="w-4 h-4 mr-2" />
+                      Doctor Signup
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
             {/* Theme Toggle Button */}
             <Button
               variant="ghost"
