@@ -21,10 +21,16 @@ export default function HomePage() {
                 Jivsetu is a decentralized healthcare records system where doctors securely upload reports and patients maintain complete control over who can access their medical data.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/doctor-connect">
+                <Link href="/doctor/login">
                   <Button size="lg" className="text-base w-full sm:w-auto">
                     <FileCheck className="w-4 h-4 mr-2" />
-                    Connect as Doctor
+                    Doctor Login
+                  </Button>
+                </Link>
+                <Link href="/doctor/signup">
+                  <Button size="lg" variant="secondary" className="text-base w-full sm:w-auto">
+                    <FileCheck className="w-4 h-4 mr-2" />
+                    Doctor Signup
                   </Button>
                 </Link>
                 <Link href="/patient-connect">

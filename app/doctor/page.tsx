@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/auth-context'
+import { useDoctorAuth } from '@/context/doctor-auth-context'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -33,6 +34,7 @@ interface UploadedReport {
 
 export default function DoctorDashboard() {
   const { user, isConnected } = useAuth()
+  const { session, isLoggedIn } = useDoctorAuth()
   const router = useRouter()
   const [reports, setReports] = useState<UploadedReport[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -57,6 +59,7 @@ export default function DoctorDashboard() {
   const [selectedUploadPatient, setSelectedUploadPatient] = useState<any | null>(null)
   const [encryptionEnabled, setEncryptionEnabled] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
 
   const loadPatientsWithAccess = () => {
     if (user?.address) {
@@ -85,13 +88,35 @@ export default function DoctorDashboard() {
   }
 
   useEffect(() => {
-    if (user?.address) {
+    // Redirect to login if not authenticated as a doctor
+    if (!isLoggedIn) {
+      console.log('[v0] Doctor not logged in, redirecting to login');
+      router.push('/doctor/login');
+    } else {
+      setIsCheckingAuth(false);
+    }
+  }, [isLoggedIn, router]);
+
+  useEffect(() => {
+    if (user?.address && !isCheckingAuth) {
       // Don't initialize mock data - only load real patient grants
       // initializeMockAccessData()
       // Load patients who granted access
       loadPatientsWithAccess()
     }
-  }, [user?.address])
+  }, [user?.address, isCheckingAuth])
+
+  // Show loading while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Verifying doctor access...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isConnected) {
     return (

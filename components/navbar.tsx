@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import { useAuth } from '@/context/auth-context'
+import { useDoctorAuth } from '@/context/doctor-auth-context'
 import { Button } from '@/components/ui/button'
 import { LogOut, Menu, X, User, Sun, Moon } from 'lucide-react'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import {
   DropdownMenu,
@@ -14,11 +16,18 @@ import {
 
 export function Navbar() {
   const { user, isConnected, connectWallet, disconnectWallet } = useAuth()
+  const { session, logout: logoutDoctor } = useDoctorAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { theme, setTheme } = useTheme()
+  const router = useRouter()
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark')
+  }
+
+  const handleDoctorLogout = () => {
+    logoutDoctor()
+    router.push('/doctor/login')
   }
 
   const formatAddress = (address: string) => {
@@ -101,6 +110,22 @@ export function Navbar() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+              </div>
+            ) : session ? (
+              // Doctor logged in
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground hidden sm:inline">
+                  Dr. {session.username}
+                </span>
+                <Button 
+                  onClick={handleDoctorLogout} 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-2 text-destructive"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:inline">Logout</span>
+                </Button>
               </div>
             ) : (
               <Button onClick={connectWallet} size="sm">
