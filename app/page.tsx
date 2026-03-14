@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Shield, Lock, Share2, Users, Zap } from 'lucide-react'
+import { Shield, Lock, Share2, Users, Zap, FileCheck } from 'lucide-react'
 
 export default function HomePage() {
   return (
