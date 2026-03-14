@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, Eye, EyeOff, CheckCircle, Clock, FileText, Lock, ExternalLink, Plus, Share2, User, Upload, Download, Shield, Loader, Trash2 } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, CheckCircle, Clock, FileText, Lock, ExternalLink, Plus, Share2, User, Upload, Download, Shield, Loader, Trash2, RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { grantFileAccess, revokeFileAccess, getDoctorsWithAccess, getAccessLog } from '@/lib/alchemy'
@@ -66,6 +66,28 @@ export default function PatientDashboard() {
     description: '',
     file: null as File | null,
   })
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const loadDoctorPermissions = () => {
+    if (user?.address) {
+      const doctors = getDoctorsWithAccessToPatient(user.address)
+      setDoctorPermissions(doctors.map(access => ({
+        address: access.doctorAddress,
+        files: access.files || [],
+        grantedAt: access.grantedAt,
+      })))
+    }
+  }
+
+  const handleRefreshPermissions = async () => {
+    setIsRefreshing(true)
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300))
+      loadDoctorPermissions()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
 
   // Load data on mount
   useEffect(() => {
@@ -240,6 +262,8 @@ export default function PatientDashboard() {
       
       setNewDoctorAddress('')
       alert('Access granted successfully!')
+      // Refresh doctor permissions to ensure immediate UI update
+      loadDoctorPermissions()
     } catch (err) {
       console.error('[v0] Error granting access:', err)
       alert('Failed to grant access. Please try again.')
@@ -554,7 +578,19 @@ export default function PatientDashboard() {
                 <h2 className="text-2xl font-bold">Active Permissions</h2>
                 <p className="text-muted-foreground">Manage which doctors can access your records</p>
               </div>
-              <Badge variant="secondary">{doctorPermissions.length} Doctors</Badge>
+              <div className="flex items-center gap-3">
+                <Badge variant="secondary">{doctorPermissions.length} Doctors</Badge>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleRefreshPermissions}
+                  disabled={isRefreshing}
+                  className="gap-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                </Button>
+              </div>
             </div>
 
             {isLoading ? (

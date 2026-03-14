@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Upload, AlertCircle, CheckCircle, File, Trash2, Loader, User, Search, FileText, Eye, Download, Share2, Clock, Lock, Shield } from 'lucide-react'
+import { Upload, AlertCircle, CheckCircle, File, Trash2, Loader, User, Search, FileText, Eye, Download, Share2, Clock, Lock, Shield, RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { FieldGroup, FieldLabel } from '@/components/ui/field'
 import { uploadFileToPinata, getIPFSUrl } from '@/lib/pinata'
@@ -56,14 +56,33 @@ export default function DoctorDashboard() {
   const [showUploadDialog, setShowUploadDialog] = useState(false)
   const [selectedUploadPatient, setSelectedUploadPatient] = useState<any | null>(null)
   const [encryptionEnabled, setEncryptionEnabled] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const loadPatientsWithAccess = () => {
+    if (user?.address) {
+      const patients = getPatientsWhoGrantedAccess(user.address)
+      setPatientsWithAccess(patients)
+      console.log('[v0] Loaded patients:', patients)
+    }
+  }
+
+  const handleRefreshPatients = async () => {
+    setIsRefreshing(true)
+    try {
+      // Add a small delay to ensure data is updated
+      await new Promise(resolve => setTimeout(resolve, 300))
+      loadPatientsWithAccess()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
 
   useEffect(() => {
     if (user?.address) {
       // Initialize mock data if needed
       initializeMockAccessData()
       // Load patients who granted access
-      const patients = getPatientsWhoGrantedAccess(user.address)
-      setPatientsWithAccess(patients)
+      loadPatientsWithAccess()
     }
   }, [user?.address])
 
@@ -197,6 +216,8 @@ export default function DoctorDashboard() {
       setSelectedUploadPatient(null)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
+      // Refresh patient list to ensure UI is updated
+      loadPatientsWithAccess()
     } catch (err) {
       console.error('[v0] Upload error:', err)
       setError(err instanceof Error ? err.message : 'Failed to upload report')
@@ -339,7 +360,19 @@ export default function DoctorDashboard() {
                 <h2 className="text-2xl font-bold">Authorized Patients</h2>
                 <p className="text-muted-foreground">Patients who have granted you access to their records</p>
               </div>
-              <Badge variant="secondary">{patientsWithAccess.length} Patients</Badge>
+              <div className="flex items-center gap-3">
+                <Badge variant="secondary">{patientsWithAccess.length} Patients</Badge>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleRefreshPatients}
+                  disabled={isRefreshing}
+                  className="gap-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                </Button>
+              </div>
             </div>
 
             {patientsWithAccess.length === 0 ? (
