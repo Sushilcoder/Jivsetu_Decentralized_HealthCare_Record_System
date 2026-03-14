@@ -66,6 +66,26 @@ export function deleteReport(reportId: string): void {
   }
 }
 
+// Clear all reports - useful for resetting to only IPFS-uploaded data
+export function clearAllReports(): void {
+  if (typeof window === 'undefined') return;
+
+  try {
+    localStorage.removeItem(REPORTS_STORAGE_KEY);
+    console.log('[v0] All local reports cleared');
+  } catch (e) {
+    console.error('Error clearing reports:', e);
+  }
+}
+
+// Count only IPFS-uploaded reports (those with valid IPFS hashes)
+export function countIPFSReports(patientAddress: string): number {
+  if (typeof window === 'undefined') return 0;
+
+  const reports = getPatientReports(patientAddress);
+  return reports.filter(r => r.ipfsHash && r.ipfsHash.startsWith('Qm')).length;
+}
+
 export function downloadReport(report: StoredReport): void {
   try {
     // Get IPFS gateway URL for the file

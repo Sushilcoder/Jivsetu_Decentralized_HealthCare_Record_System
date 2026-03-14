@@ -12,8 +12,8 @@ import { Upload, AlertCircle, CheckCircle, File, Trash2, Loader, User, Search, F
 import { useRouter } from 'next/navigation'
 import { FieldGroup, FieldLabel } from '@/components/ui/field'
 import { uploadFileToPinata, getIPFSUrl } from '@/lib/pinata'
-import { getPatientsWhoGrantedAccess, initializeMockAccessData, grantAccessToDoctor } from '@/lib/access-storage'
-import { storeReport, getPatientReports, downloadReport } from '@/lib/reports-storage'
+import { getPatientsWhoGrantedAccess, grantAccessToDoctor } from '@/lib/access-storage'
+import { storeReport, getPatientReports, downloadReport, countIPFSReports, clearAllReports } from '@/lib/reports-storage'
 import { Badge } from '@/components/ui/badge'
 import { encryptFileToBlob, storeEncryptionMetadata } from '@/lib/encryption'
 import { logFileUpload, logFileView, logFileDownload } from '@/lib/access-log'
@@ -61,8 +61,15 @@ export default function DoctorDashboard() {
   const loadPatientsWithAccess = () => {
     if (user?.address) {
       const patients = getPatientsWhoGrantedAccess(user.address)
-      setPatientsWithAccess(patients)
-      console.log('[v0] Loaded patients:', patients)
+      
+      // Update record count to only count IPFS-uploaded reports
+      const patientsWithIPFSCounts = patients.map(patient => ({
+        ...patient,
+        recordCount: countIPFSReports(patient.patientAddress),
+      }))
+      
+      setPatientsWithAccess(patientsWithIPFSCounts)
+      console.log('[v0] Loaded patients with IPFS report counts:', patientsWithIPFSCounts)
     }
   }
 
@@ -79,8 +86,8 @@ export default function DoctorDashboard() {
 
   useEffect(() => {
     if (user?.address) {
-      // Initialize mock data if needed
-      initializeMockAccessData()
+      // Don't initialize mock data - only load real patient grants
+      // initializeMockAccessData()
       // Load patients who granted access
       loadPatientsWithAccess()
     }

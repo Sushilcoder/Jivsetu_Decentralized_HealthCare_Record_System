@@ -181,27 +181,8 @@ export function getPatientsWhoGrantedAccess(doctorAddress: string): DoctorAccess
   }
 }
 
-// Add mock data for demonstration
+// Add mock data for demonstration - DISABLED: Only real IPFS uploads should be shown
 export function initializeMockAccessData() {
   if (typeof window === 'undefined') return;
-
-  try {
-    // Only add if empty
-    if (localStorage.getItem('patient-access-0xf006cfce70f32e3e741e7173e4d0173f54c8fba9')) {
-      return; // Already initialized
-    }
-
-    // Mock patient grants access to doctor
-    const mockPatientAddr = '0xf006cfce70f32e3e741e7173e4d0173f54c8fba9';
-    const mockDoctorAddr = '0x742d35Cc6634C0532925a3b844Bc3e703AeeFf70';
-    
-    grantAccessToDoctor(
-      mockPatientAddr,
-      'John Doe',
-      mockDoctorAddr,
-      ['QmHash1', 'QmHash2', 'QmHash3', 'QmHash4', 'QmHash5']
-    );
-  } catch (e) {
-    console.error('Error initializing mock data:', e);
-  }
+  // Mock data disabled - only real grants from patients will be used
 }
