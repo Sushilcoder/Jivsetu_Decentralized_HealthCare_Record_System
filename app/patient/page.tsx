@@ -13,7 +13,7 @@ import { grantFileAccess, revokeFileAccess, getDoctorsWithAccess, getAccessLog }
 import { listPatientFiles, getIPFSUrl, uploadFileToPinata } from '@/lib/pinata'
 import { grantAccessToDoctor, revokeAccessFromDoctor, getDoctorsWithAccessToPatient } from '@/lib/access-storage'
 import { getPatientAccessLogs, logAccessGrant, logAccessRevoke } from '@/lib/access-log'
-import { storeReport, getPatientReports, downloadReport } from '@/lib/reports-storage'
+import { storeReport, getPatientReports, downloadReport, downloadReportAsJSON } from '@/lib/reports-storage'
 import { encryptFileToBlob, storeEncryptionMetadata } from '@/lib/encryption'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -505,6 +505,23 @@ export default function PatientDashboard() {
                       >
                         <Download className="w-3 h-3" />
                         Download
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          // Find the stored report to get full details for JSON download
+                          const storedReports = getPatientReports(user?.address || '');
+                          const storedReport = storedReports.find(r => r.ipfsHash === report.hash);
+                          if (storedReport) {
+                            downloadReportAsJSON(storedReport);
+                          }
+                        }}
+                        className="gap-1"
+                        title="Download report metadata as JSON"
+                      >
+                        <FileText className="w-3 h-3" />
+                        JSON
                       </Button>
                       <span className="text-xs text-muted-foreground">Hash: {report.hash.slice(0, 10)}...</span>
                     </div>

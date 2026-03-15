@@ -226,3 +226,73 @@ This report is stored on IPFS at: https://gateway.pinata.cloud/ipfs/${report.ipf
     console.error('[v0] Error in blob download fallback:', e);
   }
 }
+
+/**
+ * Download report metadata as JSON file
+ * Contains all report information including IPFS hash, patient details, doctor info, etc.
+ */
+export function downloadReportAsJSON(report: StoredReport): void {
+  try {
+    console.log('[v0] Downloading report as JSON:', report.reportTitle);
+    
+    // Create JSON structure with all report data
+    const reportJSON = {
+      metadata: {
+        id: report.id,
+        title: report.reportTitle,
+        description: report.description,
+        uploadedAt: report.uploadedAt,
+        uploadedTimestamp: report.uploadTimestamp,
+        fileSize: report.fileSize,
+        contentType: report.contentType,
+        encrypted: report.encrypted || false,
+      },
+      ipfs: {
+        hash: report.ipfsHash,
+        gateway: 'https://gateway.pinata.cloud',
+        url: `https://gateway.pinata.cloud/ipfs/${report.ipfsHash}`,
+        viewUrl: `https://ipfs.io/ipfs/${report.ipfsHash}`,
+      },
+      patient: {
+        name: report.patientName,
+        address: report.patientAddress,
+      },
+      doctor: {
+        name: report.doctorName,
+        address: report.doctorAddress,
+      },
+      verification: {
+        blockchain_verified: true,
+        timestamp: report.uploadTimestamp,
+        protocol: 'Jivsetu Decentralized Healthcare Record System',
+      }
+    };
+    
+    // Create blob with JSON content
+    const jsonString = JSON.stringify(reportJSON, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    
+    // Create download link
+    const element = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    element.href = url;
+    
+    const sanitizedTitle = report.reportTitle.replace(/\s+/g, '_').replace(/[^a-z0-9_-]/gi, '');
+    element.download = `${sanitizedTitle}_metadata_${report.uploadTimestamp}.json`;
+    
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 100);
+    
+    console.log('[v0] Successfully downloaded JSON metadata:', {
+      filename: element.download,
+      size: `${(blob.size / 1024).toFixed(2)}KB`,
+    });
+  } catch (e) {
+    console.error('[v0] Error downloading JSON:', e);
+  }
+}

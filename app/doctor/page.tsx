@@ -14,7 +14,7 @@ import { useRouter } from 'next/navigation'
 import { FieldGroup, FieldLabel } from '@/components/ui/field'
 import { uploadFileToPinata, getIPFSUrl } from '@/lib/pinata'
 import { getPatientsWhoGrantedAccess, grantAccessToDoctor } from '@/lib/access-storage'
-import { storeReport, getPatientReports, downloadReport, countIPFSReports, clearAllReports } from '@/lib/reports-storage'
+import { storeReport, getPatientReports, downloadReport, downloadReportAsJSON, countIPFSReports, clearAllReports } from '@/lib/reports-storage'
 import { Badge } from '@/components/ui/badge'
 import { encryptFileToBlob, storeEncryptionMetadata } from '@/lib/encryption'
 import { logFileUpload, logFileView, logFileDownload } from '@/lib/access-log'
@@ -657,6 +657,16 @@ export default function DoctorDashboard() {
                         >
                           <Download className="w-3 h-3" />
                           Download
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => downloadReportAsJSON(report)}
+                          className="gap-1"
+                          title="Download report metadata as JSON"
+                        >
+                          <FileText className="w-3 h-3" />
+                          JSON
                         </Button>
                       </div>
                     )}
