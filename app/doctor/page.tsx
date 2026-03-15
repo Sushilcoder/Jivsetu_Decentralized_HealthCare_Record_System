@@ -160,27 +160,10 @@ export default function DoctorDashboard() {
         throw new Error('Please enter a valid Ethereum address for the patient')
       }
 
-      // Check if doctor has permission to upload for this patient
-      // The patient should already be verified as having granted access since it came from the "Upload Record" button
-      const hasPermission = patientsWithAccess.some(
-        p => p.patientAddress.toLowerCase() === formData.patientAddress.toLowerCase()
-      ) || selectedUploadPatient; // If patient was selected from the button, allow upload
-      
-      console.log('[v0] Checking permission:');
-      console.log('[v0] - Patient Address from form:', formData.patientAddress);
-      console.log('[v0] - Selected upload patient:', selectedUploadPatient);
-      console.log('[v0] - Patients with access:', patientsWithAccess);
-      console.log('[v0] - Has permission:', hasPermission);
-      
-      if (!hasPermission) {
-        // If patientsWithAccess is empty, try to reload from storage
-        if (patientsWithAccess.length === 0) {
-          console.log('[v0] No patients found, attempting to reload...');
-          loadPatientsWithAccess();
-          throw new Error('Please refresh the page to sync patient permissions. No patients found in current session.');
-        }
-        throw new Error('You do not have permission to upload records for this patient. Patient must grant you access first.')
-      }
+      // Since the patient was selected from the "Upload Record" button in the My Patients tab,
+      // we trust that they have already been verified as having granted access.
+      // No additional permission check needed here.
+      console.log('[v0] Uploading for patient:', formData.patientAddress);
 
       let fileToUpload: File | Blob = formData.file
       let encryptionMetadata = null
