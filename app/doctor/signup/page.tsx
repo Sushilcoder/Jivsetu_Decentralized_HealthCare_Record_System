@@ -106,7 +106,7 @@ export default function DoctorSignupPage() {
           router.push('/doctor');
         }, 1500);
       } else {
-        setError(result.error || 'Signup failed');
+        setError(result.message || 'Signup failed');
       }
     } catch (err) {
       console.error('[v0] Signup error:', err);

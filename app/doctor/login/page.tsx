@@ -53,7 +53,7 @@ export default function DoctorLoginPage() {
         console.log('[v0] Login successful, redirecting to dashboard');
         router.push('/doctor');
       } else {
-        setError(result.error || 'Login failed');
+        setError(result.message || 'Login failed');
       }
     } catch (err) {
       console.error('[v0] Login error:', err);
