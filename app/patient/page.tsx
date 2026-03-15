@@ -490,6 +490,22 @@ export default function PatientDashboard() {
                         View on IPFS
                         <ExternalLink className="w-3 h-3" />
                       </a>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => {
+                          // Find the stored report to get full details for download
+                          const storedReports = getPatientReports(user?.address || '');
+                          const storedReport = storedReports.find(r => r.ipfsHash === report.hash);
+                          if (storedReport) {
+                            downloadReport(storedReport);
+                          }
+                        }}
+                        className="gap-1"
+                      >
+                        <Download className="w-3 h-3" />
+                        Download
+                      </Button>
                       <span className="text-xs text-muted-foreground">Hash: {report.hash.slice(0, 10)}...</span>
                     </div>
                   </Card>

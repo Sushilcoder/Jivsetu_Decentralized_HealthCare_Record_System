@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Upload, AlertCircle, CheckCircle, File as FileIcon, Trash2, Loader, User, Search, FileText, Eye, Download, Share2, Clock, Lock, Shield, RefreshCw } from 'lucide-react'
+import { Upload, AlertCircle, CheckCircle, File as FileIcon, Trash2, Loader, User, Search, FileText, Eye, Download, Share2, Clock, Lock, Shield, RefreshCw, ExternalLink } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { FieldGroup, FieldLabel } from '@/components/ui/field'
 import { uploadFileToPinata, getIPFSUrl } from '@/lib/pinata'
@@ -614,16 +614,28 @@ export default function DoctorDashboard() {
                       <span>Uploaded: {report.uploadedAt}</span>
                     </div>
                     {report.ipfsHash && (
-                      <div className="bg-secondary/50 rounded p-3 text-xs break-all">
-                        <span className="font-mono">IPFS Hash: {report.ipfsHash}</span>
+                      <div className="flex items-center gap-3">
+                        <div className="bg-secondary/50 rounded p-3 text-xs break-all flex-1">
+                          <span className="font-mono">IPFS Hash: {report.ipfsHash}</span>
+                        </div>
                         <a
                           href={getIPFSUrl(report.ipfsHash)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="ml-2 text-primary hover:underline"
+                          className="text-primary hover:underline text-sm flex items-center gap-1"
                         >
                           View
+                          <ExternalLink className="w-3 h-3" />
                         </a>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => downloadReport(report)}
+                          className="gap-1"
+                        >
+                          <Download className="w-3 h-3" />
+                          Download
+                        </Button>
                       </div>
                     )}
                   </Card>
