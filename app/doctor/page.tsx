@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Upload, AlertCircle, CheckCircle, File, Trash2, Loader, User, Search, FileText, Eye, Download, Share2, Clock, Lock, Shield, RefreshCw } from 'lucide-react'
+import { Upload, AlertCircle, CheckCircle, File as FileIcon, Trash2, Loader, User, Search, FileText, Eye, Download, Share2, Clock, Lock, Shield, RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { FieldGroup, FieldLabel } from '@/components/ui/field'
 import { uploadFileToPinata, getIPFSUrl } from '@/lib/pinata'
@@ -584,7 +584,7 @@ export default function DoctorDashboard() {
             <h2 className="text-2xl font-bold mb-6">Recent Uploads</h2>
             {reports.length === 0 ? (
               <Card className="p-12 text-center">
-                <File className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <FileIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
                 <p className="text-muted-foreground">No reports uploaded yet</p>
                 <p className="text-sm text-muted-foreground mt-2">Upload your first patient report to get started</p>
               </Card>
