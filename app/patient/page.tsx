@@ -489,10 +489,14 @@ export default function PatientDashboard() {
                         onClick={(e) => {
                           // Also download JSON on click
                           e.preventDefault();
+                          console.log('[v0] View on IPFS clicked, downloading JSON');
                           const storedReports = getPatientReports(user?.address || '');
                           const storedReport = storedReports.find(r => r.ipfsHash === report.hash);
                           if (storedReport) {
+                            console.log('[v0] Found stored report, downloading JSON:', storedReport.reportTitle);
                             downloadReportAsJSON(storedReport);
+                          } else {
+                            console.log('[v0] No stored report found for hash:', report.hash);
                           }
                           // Open IPFS in new tab
                           window.open(getIPFSUrl(report.hash), '_blank');
@@ -506,10 +510,15 @@ export default function PatientDashboard() {
                         size="sm" 
                         onClick={() => {
                           // Find the stored report to get full details for JSON download
+                          console.log('[v0] Download button clicked');
                           const storedReports = getPatientReports(user?.address || '');
+                          console.log('[v0] Found stored reports:', storedReports.length);
                           const storedReport = storedReports.find(r => r.ipfsHash === report.hash);
                           if (storedReport) {
+                            console.log('[v0] Downloading JSON for:', storedReport.reportTitle);
                             downloadReportAsJSON(storedReport);
+                          } else {
+                            console.log('[v0] Report not found for hash:', report.hash);
                           }
                         }}
                         className="gap-1"

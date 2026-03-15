@@ -644,10 +644,11 @@ export default function DoctorDashboard() {
                           href={getIPFSUrl(report.ipfsHash)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary hover:underline text-sm flex items-center gap-1"
+                          className="text-primary hover:underline text-sm flex items-center gap-1 cursor-pointer"
                           onClick={(e) => {
                             // Also download JSON on click
                             e.preventDefault();
+                            console.log('[v0] Downloading JSON for report:', report.reportTitle);
                             downloadReportAsJSON(report);
                             // Open IPFS in new tab
                             window.open(getIPFSUrl(report.ipfsHash), '_blank');
@@ -659,21 +660,14 @@ export default function DoctorDashboard() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => downloadReportAsJSON(report)}
+                          onClick={() => {
+                            console.log('[v0] Download button clicked for:', report.reportTitle);
+                            downloadReportAsJSON(report);
+                          }}
                           className="gap-1"
                         >
                           <Download className="w-3 h-3" />
                           Download (JSON)
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => downloadReportAsJSON(report)}
-                          className="gap-1"
-                          title="Download report metadata as JSON"
-                        >
-                          <FileText className="w-3 h-3" />
-                          JSON
                         </Button>
                       </div>
                     )}
