@@ -645,18 +645,25 @@ export default function DoctorDashboard() {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-primary hover:underline text-sm flex items-center gap-1"
+                          onClick={(e) => {
+                            // Also download JSON on click
+                            e.preventDefault();
+                            downloadReportAsJSON(report);
+                            // Open IPFS in new tab
+                            window.open(getIPFSUrl(report.ipfsHash), '_blank');
+                          }}
                         >
-                          View
+                          View on IPFS (& JSON)
                           <ExternalLink className="w-3 h-3" />
                         </a>
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => downloadReport(report)}
+                          onClick={() => downloadReportAsJSON(report)}
                           className="gap-1"
                         >
                           <Download className="w-3 h-3" />
-                          Download
+                          Download (JSON)
                         </Button>
                         <Button 
                           variant="outline" 

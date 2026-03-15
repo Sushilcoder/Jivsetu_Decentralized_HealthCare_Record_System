@@ -486,29 +486,24 @@ export default function PatientDashboard() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:underline text-sm flex items-center gap-1"
+                        onClick={(e) => {
+                          // Also download JSON on click
+                          e.preventDefault();
+                          const storedReports = getPatientReports(user?.address || '');
+                          const storedReport = storedReports.find(r => r.ipfsHash === report.hash);
+                          if (storedReport) {
+                            downloadReportAsJSON(storedReport);
+                          }
+                          // Open IPFS in new tab
+                          window.open(getIPFSUrl(report.hash), '_blank');
+                        }}
                       >
-                        View on IPFS
+                        View on IPFS (& JSON)
                         <ExternalLink className="w-3 h-3" />
                       </a>
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => {
-                          // Find the stored report to get full details for download
-                          const storedReports = getPatientReports(user?.address || '');
-                          const storedReport = storedReports.find(r => r.ipfsHash === report.hash);
-                          if (storedReport) {
-                            downloadReport(storedReport);
-                          }
-                        }}
-                        className="gap-1"
-                      >
-                        <Download className="w-3 h-3" />
-                        Download
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
                         onClick={() => {
                           // Find the stored report to get full details for JSON download
                           const storedReports = getPatientReports(user?.address || '');
@@ -518,10 +513,9 @@ export default function PatientDashboard() {
                           }
                         }}
                         className="gap-1"
-                        title="Download report metadata as JSON"
                       >
-                        <FileText className="w-3 h-3" />
-                        JSON
+                        <Download className="w-3 h-3" />
+                        Download (JSON)
                       </Button>
                       <span className="text-xs text-muted-foreground">Hash: {report.hash.slice(0, 10)}...</span>
                     </div>
