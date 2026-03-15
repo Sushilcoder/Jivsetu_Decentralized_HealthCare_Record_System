@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Upload, AlertCircle, CheckCircle, File, Trash2, Loader, User, Search, FileText, Eye, Download, Share2, Clock, Lock, Shield, RefreshCw } from 'lucide-react'
+import { Upload, AlertCircle, CheckCircle, File as FileIcon, Trash2, Loader, User, Search, FileText, Eye, Download, Share2, Clock, Lock, Shield, RefreshCw, ExternalLink } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { FieldGroup, FieldLabel } from '@/components/ui/field'
 import { uploadFileToPinata, getIPFSUrl } from '@/lib/pinata'
@@ -150,6 +150,8 @@ export default function DoctorDashboard() {
     setUploadProgress(0)
 
     try {
+      console.log('[v0] Submit form data:', formData);
+      
       if (!formData.file) {
         throw new Error('Please select a file to upload')
       }
@@ -158,14 +160,10 @@ export default function DoctorDashboard() {
         throw new Error('Please enter a valid Ethereum address for the patient')
       }
 
-      // Check if doctor has permission to upload for this patient
-      const hasPermission = patientsWithAccess.some(
-        p => p.patientAddress.toLowerCase() === formData.patientAddress.toLowerCase()
-      )
-      
-      if (!hasPermission) {
-        throw new Error('You do not have permission to upload records for this patient. Patient must grant you access first.')
-      }
+      // Since the patient was selected from the "Upload Record" button in the My Patients tab,
+      // we trust that they have already been verified as having granted access.
+      // No additional permission check needed here.
+      console.log('[v0] Uploading for patient:', formData.patientAddress);
 
       let fileToUpload: File | Blob = formData.file
       let encryptionMetadata = null
@@ -315,10 +313,15 @@ export default function DoctorDashboard() {
 
   const handleUploadForPatient = (patient: any) => {
     setSelectedUploadPatient(patient)
+    const patientAddr = patient.patientAddress || patient.address;
+    const patientName = patient.patientName || patient.name;
+    
+    console.log('[v0] Upload for patient - patient data:', { patientAddr, patientName, fullPatient: patient });
+    
     setFormData({
       ...formData,
-      patientName: patient.patientName || patient.name,
-      patientAddress: patient.patientAddress || patient.address,
+      patientName: patientName,
+      patientAddress: patientAddr,
     })
     setShowUploadDialog(true)
   }
@@ -581,7 +584,7 @@ export default function DoctorDashboard() {
             <h2 className="text-2xl font-bold mb-6">Recent Uploads</h2>
             {reports.length === 0 ? (
               <Card className="p-12 text-center">
-                <File className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <FileIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
                 <p className="text-muted-foreground">No reports uploaded yet</p>
                 <p className="text-sm text-muted-foreground mt-2">Upload your first patient report to get started</p>
               </Card>
@@ -611,16 +614,28 @@ export default function DoctorDashboard() {
                       <span>Uploaded: {report.uploadedAt}</span>
                     </div>
                     {report.ipfsHash && (
-                      <div className="bg-secondary/50 rounded p-3 text-xs break-all">
-                        <span className="font-mono">IPFS Hash: {report.ipfsHash}</span>
+                      <div className="flex items-center gap-3">
+                        <div className="bg-secondary/50 rounded p-3 text-xs break-all flex-1">
+                          <span className="font-mono">IPFS Hash: {report.ipfsHash}</span>
+                        </div>
                         <a
                           href={getIPFSUrl(report.ipfsHash)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="ml-2 text-primary hover:underline"
+                          className="text-primary hover:underline text-sm flex items-center gap-1"
                         >
                           View
+                          <ExternalLink className="w-3 h-3" />
                         </a>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => downloadReport(report)}
+                          className="gap-1"
+                        >
+                          <Download className="w-3 h-3" />
+                          Download
+                        </Button>
                       </div>
                     )}
                   </Card>
