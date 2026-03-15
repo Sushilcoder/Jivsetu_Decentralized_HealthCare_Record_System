@@ -87,153 +87,9 @@ export function countIPFSReports(patientAddress: string): number {
   return reports.filter(r => r.ipfsHash && r.ipfsHash.startsWith('Qm')).length;
 }
 
-export function downloadReport(report: StoredReport): void {
-  try {
-    // Get IPFS gateway URL for the file
-    const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${report.ipfsHash}`;
-    
-    // Map content type to file extension - prioritize images
-    const contentTypeToExt: Record<string, string> = {
-      'application/pdf': 'pdf',
-      'image/jpeg': 'jpg',
-      'image/jpg': 'jpg',
-      'image/png': 'png',
-      'image/gif': 'gif',
-      'image/webp': 'webp',
-      'image/bmp': 'bmp',
-      'image/tiff': 'tiff',
-      'application/msword': 'doc',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
-      'application/vnd.ms-excel': 'xls',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
-      'text/plain': 'txt',
-      'application/json': 'json',
-    };
-
-    // Use the stored content type
-    let mimeType = report.contentType || 'application/octet-stream';
-    let extension = contentTypeToExt[mimeType] || 'bin';
-    
-    // Log what we're downloading
-    console.log('[v0] Downloading report:', {
-      title: report.reportTitle,
-      storedContentType: report.contentType,
-      resolvedMimeType: mimeType,
-      extension: extension,
-      ipfsHash: report.ipfsHash
-    });
-    
-    // Fetch the file from IPFS
-    fetch(ipfsUrl)
-      .then(response => {
-        if (!response.ok) {
-          console.error('[v0] Failed response from IPFS:', response.status, response.statusText);
-          throw new Error(`Failed to fetch file from IPFS: ${response.statusText}`);
-        }
-        
-        // Try to get content type from response headers
-        const responseContentType = response.headers.get('content-type');
-        if (responseContentType && responseContentType !== 'application/octet-stream') {
-          const cleanContentType = responseContentType.split(';')[0].trim();
-          mimeType = cleanContentType;
-          extension = contentTypeToExt[mimeType] || extension;
-          console.log('[v0] Updated MIME type from response:', { mimeType, extension });
-        }
-        
-        return response.blob();
-      })
-      .then(blob => {
-        // Ensure proper MIME type for common formats
-        if (report.contentType?.startsWith('image/')) {
-          // For images, use the stored MIME type directly
-          mimeType = report.contentType;
-        } else if (report.contentType === 'application/pdf') {
-          mimeType = 'application/pdf';
-        }
-        
-        // Create a typed blob with correct MIME type
-        const typedBlob = new Blob([blob], { type: mimeType });
-        
-        // Create download link
-        const element = document.createElement('a');
-        const url = URL.createObjectURL(typedBlob);
-        element.href = url;
-        
-        // Construct filename with proper extension
-        const sanitizedTitle = report.reportTitle.replace(/\s+/g, '_').replace(/[^a-z0-9_-]/gi, '');
-        element.download = `${sanitizedTitle}_${report.uploadTimestamp}.${extension}`;
-        
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
-        
-        // Cleanup
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-        }, 100);
-        
-        console.log('[v0] Successfully downloaded file from IPFS:', {
-          filename: element.download,
-          size: `${(blob.size / 1024).toFixed(2)}KB`,
-          mimeType: mimeType,
-          originalContentType: report.contentType
-        });
-      })
-      .catch(error => {
-        console.error('[v0] Error downloading from IPFS:', error);
-        // Fallback: Try direct blob download
-        downloadBlob(report, mimeType, extension);
-      });
-  } catch (e) {
-    console.error('[v0] Error initiating download:', e);
-  }
-}
-
-function downloadBlob(report: StoredReport, mimeType: string, extension: string): void {
-  try {
-    console.log('[v0] Attempting direct blob download fallback');
-    
-    const element = document.createElement('a');
-    const sanitizedTitle = report.reportTitle.replace(/\s+/g, '_').replace(/[^a-z0-9_-]/gi, '');
-    element.download = `${sanitizedTitle}_${report.uploadTimestamp}.${extension}`;
-    
-    // Create a simple text file with report metadata as fallback
-    const reportMetadata = `
-MEDICAL REPORT
-==================
-Title: ${report.reportTitle}
-Patient: ${report.patientName} (${report.patientAddress})
-Doctor: ${report.doctorName} (${report.doctorAddress})
-Date: ${report.uploadedAt}
-IPFS Hash: ${report.ipfsHash}
-
-Description:
-${report.description}
-
-Note: Original file format was ${report.contentType || 'unknown'}
-This report is stored on IPFS at: https://gateway.pinata.cloud/ipfs/${report.ipfsHash}
-    `.trim();
-    
-    const file = new Blob([reportMetadata], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-    URL.revokeObjectURL(element.href);
-    
-    console.log('[v0] Downloaded fallback text file');
-  } catch (e) {
-    console.error('[v0] Error in blob download fallback:', e);
-  }
-}
-
-/**
- * Download report metadata as JSON file
- * Contains all report information including IPFS hash, patient details, doctor info, etc.
- */
 export function downloadReportAsJSON(report: StoredReport): void {
   try {
-    console.log('[v0] Downloading report as JSON:', report.reportTitle);
+    console.log('[v0] Starting JSON download for:', report.reportTitle);
     
     // Create JSON structure with all report data
     const reportJSON = {
@@ -268,31 +124,54 @@ export function downloadReportAsJSON(report: StoredReport): void {
       }
     };
     
-    // Create blob with JSON content
+    // Create JSON string
     const jsonString = JSON.stringify(reportJSON, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
+    console.log('[v0] JSON created, size:', jsonString.length);
+    
+    // Create blob
+    const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
+    console.log('[v0] Blob created, size:', blob.size);
     
     // Create download link
-    const element = document.createElement('a');
+    const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-    element.href = url;
     
     const sanitizedTitle = report.reportTitle.replace(/\s+/g, '_').replace(/[^a-z0-9_-]/gi, '');
-    element.download = `${sanitizedTitle}_metadata_${report.uploadTimestamp}.json`;
+    const filename = `${sanitizedTitle}_${report.uploadTimestamp}.json`;
     
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
     
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 100);
+    console.log('[v0] Appending link to body');
+    document.body.appendChild(link);
     
-    console.log('[v0] Successfully downloaded JSON metadata:', {
-      filename: element.download,
-      size: `${(blob.size / 1024).toFixed(2)}KB`,
-    });
-  } catch (e) {
-    console.error('[v0] Error downloading JSON:', e);
+    console.log('[v0] Clicking download link');
+    link.click();
+    
+    console.log('[v0] Removing link from body');
+    document.body.removeChild(link);
+    
+    console.log('[v0] Revoking URL');
+    URL.revokeObjectURL(url);
+    
+    console.log('[v0] JSON download completed:', filename);
+  } catch (error) {
+    console.error('[v0] Error downloading JSON:', error);
+    alert('Failed to download JSON. Check console for details.');
   }
 }
+
+export function viewReportFromIPFS(report: StoredReport): void {
+  try {
+    console.log('[v0] Opening IPFS viewer for:', report.reportTitle);
+    const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${report.ipfsHash}`;
+    
+    // Open the IPFS URL in a new window to view the actual content
+    window.open(ipfsUrl, '_blank');
+    console.log('[v0] Opened IPFS URL:', ipfsUrl);
+  } catch (error) {
+    console.error('[v0] Error viewing IPFS:', error);
+  }
+}
+

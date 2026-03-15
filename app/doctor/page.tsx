@@ -14,7 +14,7 @@ import { useRouter } from 'next/navigation'
 import { FieldGroup, FieldLabel } from '@/components/ui/field'
 import { uploadFileToPinata, getIPFSUrl } from '@/lib/pinata'
 import { getPatientsWhoGrantedAccess, grantAccessToDoctor } from '@/lib/access-storage'
-import { storeReport, getPatientReports, downloadReport, downloadReportAsJSON, countIPFSReports, clearAllReports } from '@/lib/reports-storage'
+import { storeReport, getPatientReports, downloadReportAsJSON, viewReportFromIPFS, countIPFSReports, clearAllReports } from '@/lib/reports-storage'
 import { Badge } from '@/components/ui/badge'
 import { encryptFileToBlob, storeEncryptionMetadata } from '@/lib/encryption'
 import { logFileUpload, logFileView, logFileDownload } from '@/lib/access-log'
@@ -640,30 +640,19 @@ export default function DoctorDashboard() {
                         <div className="bg-secondary/50 rounded p-3 text-xs break-all flex-1">
                           <span className="font-mono">IPFS Hash: {report.ipfsHash}</span>
                         </div>
-                        <a
-                          href={getIPFSUrl(report.ipfsHash)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline text-sm flex items-center gap-1 cursor-pointer"
-                          onClick={(e) => {
-                            // Also download JSON on click
-                            e.preventDefault();
-                            console.log('[v0] Downloading JSON for report:', report.reportTitle);
-                            downloadReportAsJSON(report);
-                            // Open IPFS in new tab
-                            window.open(getIPFSUrl(report.ipfsHash), '_blank');
-                          }}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => viewReportFromIPFS(report)}
+                          className="gap-1"
                         >
-                          View on IPFS (& JSON)
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
+                          <Eye className="w-3 h-3" />
+                          View
+                        </Button>
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => {
-                            console.log('[v0] Download button clicked for:', report.reportTitle);
-                            downloadReportAsJSON(report);
-                          }}
+                          onClick={() => downloadReportAsJSON(report)}
                           className="gap-1"
                         >
                           <Download className="w-3 h-3" />

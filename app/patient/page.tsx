@@ -13,7 +13,7 @@ import { grantFileAccess, revokeFileAccess, getDoctorsWithAccess, getAccessLog }
 import { listPatientFiles, getIPFSUrl, uploadFileToPinata } from '@/lib/pinata'
 import { grantAccessToDoctor, revokeAccessFromDoctor, getDoctorsWithAccessToPatient } from '@/lib/access-storage'
 import { getPatientAccessLogs, logAccessGrant, logAccessRevoke } from '@/lib/access-log'
-import { storeReport, getPatientReports, downloadReport, downloadReportAsJSON } from '@/lib/reports-storage'
+import { storeReport, getPatientReports, downloadReportAsJSON, viewReportFromIPFS } from '@/lib/reports-storage'
 import { encryptFileToBlob, storeEncryptionMetadata } from '@/lib/encryption'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -481,44 +481,29 @@ export default function PatientDashboard() {
                       </div>
                     </div>
                     <div className="flex gap-2 pt-4 border-t">
-                      <a
-                        href={getIPFSUrl(report.hash)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline text-sm flex items-center gap-1"
-                        onClick={(e) => {
-                          // Also download JSON on click
-                          e.preventDefault();
-                          console.log('[v0] View on IPFS clicked, downloading JSON');
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
                           const storedReports = getPatientReports(user?.address || '');
                           const storedReport = storedReports.find(r => r.ipfsHash === report.hash);
                           if (storedReport) {
-                            console.log('[v0] Found stored report, downloading JSON:', storedReport.reportTitle);
-                            downloadReportAsJSON(storedReport);
-                          } else {
-                            console.log('[v0] No stored report found for hash:', report.hash);
+                            viewReportFromIPFS(storedReport);
                           }
-                          // Open IPFS in new tab
-                          window.open(getIPFSUrl(report.hash), '_blank');
                         }}
+                        className="gap-1"
                       >
-                        View on IPFS (& JSON)
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
+                        <Eye className="w-3 h-3" />
+                        View
+                      </Button>
                       <Button 
                         variant="outline" 
                         size="sm" 
                         onClick={() => {
-                          // Find the stored report to get full details for JSON download
-                          console.log('[v0] Download button clicked');
                           const storedReports = getPatientReports(user?.address || '');
-                          console.log('[v0] Found stored reports:', storedReports.length);
                           const storedReport = storedReports.find(r => r.ipfsHash === report.hash);
                           if (storedReport) {
-                            console.log('[v0] Downloading JSON for:', storedReport.reportTitle);
                             downloadReportAsJSON(storedReport);
-                          } else {
-                            console.log('[v0] Report not found for hash:', report.hash);
                           }
                         }}
                         className="gap-1"
