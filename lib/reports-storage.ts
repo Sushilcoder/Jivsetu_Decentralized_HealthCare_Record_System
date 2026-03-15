@@ -12,6 +12,7 @@ export interface StoredReport {
   uploadTimestamp: number;
   fileSize: string;
   contentType?: string;
+  encrypted?: boolean;
 }
 
 const REPORTS_STORAGE_KEY = 'jivsetu-reports';
@@ -107,25 +108,57 @@ export function downloadReport(report: StoredReport): void {
       'application/json': 'json',
     };
 
-    const extension = contentTypeToExt[report.contentType || ''] || 'bin';
+    // Use the stored content type, or try to infer from the file extension if available
+    let mimeType = report.contentType || 'application/octet-stream';
+    let extension = contentTypeToExt[mimeType] || 'bin';
     
-    // Fetch the file from IPFS
-    fetch(ipfsUrl)
+    console.log('[v0] Downloading report:', {
+      title: report.reportTitle,
+      contentType: report.contentType,
+      extension: extension,
+      ipfsHash: report.ipfsHash
+    });
+    
+    // Fetch the file from IPFS with proper headers
+    fetch(ipfsUrl, {
+      headers: {
+        'Accept': mimeType
+      }
+    })
       .then(response => {
-        if (!response.ok) throw new Error('Failed to fetch file from IPFS');
+        if (!response.ok) {
+          console.error('[v0] Failed response from IPFS:', response.status, response.statusText);
+          throw new Error(`Failed to fetch file from IPFS: ${response.statusText}`);
+        }
+        
+        // Get the actual content type from response headers
+        const responseContentType = response.headers.get('content-type');
+        if (responseContentType) {
+          mimeType = responseContentType.split(';')[0].trim();
+          extension = contentTypeToExt[mimeType] || extension;
+          console.log('[v0] Got content type from response:', { mimeType, extension });
+        }
+        
         return response.blob();
       })
       .then(blob => {
+        // Create a new blob with the correct MIME type
+        const typedBlob = new Blob([blob], { type: mimeType });
+        
         // Create download link
         const element = document.createElement('a');
-        const url = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(typedBlob);
         element.href = url;
         element.download = `${report.reportTitle.replace(/\s+/g, '_')}_${report.uploadTimestamp}.${extension}`;
         document.body.appendChild(element);
         element.click();
         document.body.removeChild(element);
         URL.revokeObjectURL(url);
-        console.log('[v0] Downloaded file from IPFS:', element.download);
+        console.log('[v0] Downloaded file from IPFS:', {
+          filename: element.download,
+          size: `${(blob.size / 1024).toFixed(2)}KB`,
+          mimeType: mimeType
+        });
       })
       .catch(error => {
         console.error('[v0] Error downloading from IPFS:', error);
