@@ -20,6 +20,7 @@ import { encryptFileToBlob, storeEncryptionMetadata } from '@/lib/encryption'
 import { logFileUpload, logFileView, logFileDownload } from '@/lib/access-log'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { validateFileUpload, downloadFile, generateDownloadFilename } from '@/lib/file-handler'
 
 interface UploadedReport {
   id: string
@@ -134,8 +135,29 @@ export default function DoctorDashboard() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
+    
+    if (!file) {
+      setFormData(prev => ({ ...prev, file: null }))
+      setError(null)
+      return
+    }
+
+    // Validate file type and size
+    const validation = validateFileUpload(file, 50) // 50MB max
+    if (!validation.valid) {
+      setError(validation.error || 'Invalid file')
+      setFormData(prev => ({ ...prev, file: null }))
+      return
+    }
+
     setFormData(prev => ({ ...prev, file }))
     setError(null)
+    console.log('[v0] File selected and validated:', {
+      name: file.name,
+      type: file.type,
+      size: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+      extension: validation.extension,
+    })
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
