@@ -1441,4 +1441,4 @@ export default function DoctorDashboard() {
         </Dialog>
       </div>
     )
-  }
+}
