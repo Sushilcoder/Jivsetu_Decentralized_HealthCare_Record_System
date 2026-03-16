@@ -62,6 +62,30 @@ export default function DoctorDashboard() {
   const [encryptionEnabled, setEncryptionEnabled] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  
+  // Emergency Access State
+  const [emergencyPatientAddress, setEmergencyPatientAddress] = useState('')
+  const [emergencyReason, setEmergencyReason] = useState('')
+  const [emergencyAccessLog, setEmergencyAccessLog] = useState<Array<{
+    patientAddress: string
+    reason: string
+    requestTime: string
+    timeRemaining: string
+    isExpired: boolean
+  }>>([])
+
+  // Load emergency access log on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('doctor_emergency_access_log')
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        setEmergencyAccessLog(parsed)
+      } catch (e) {
+        console.log('[v0] Failed to parse emergency access log')
+      }
+    }
+  }, [])
 
   const loadPatientsWithAccess = () => {
     if (user?.address) {
@@ -375,6 +399,76 @@ export default function DoctorDashboard() {
     downloadReport(fullReport)
   }
 
+  const handleRequestEmergencyAccess = async () => {
+    if (!emergencyPatientAddress || !emergencyReason) {
+      setError('Please provide both patient address and clinical reason')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const now = new Date()
+      const expiryTime = new Date(now.getTime() + 60 * 60 * 1000) // 1 hour
+      
+      const newLog = {
+        patientAddress: emergencyPatientAddress,
+        reason: emergencyReason,
+        requestTime: now.toLocaleString(),
+        timeRemaining: '59:59',
+        isExpired: false,
+      }
+
+      const updated = [...emergencyAccessLog, newLog]
+      setEmergencyAccessLog(updated)
+      localStorage.setItem('doctor_emergency_access_log', JSON.stringify(updated))
+
+      // Log emergency access for audit
+      logFileUpload(
+        emergencyPatientAddress,
+        user?.address || '',
+        `EMERGENCY_ACCESS_${Date.now()}`,
+        'Emergency Access Request',
+        emergencyReason
+      )
+
+      setSuccess('Emergency access requested. You have 1 hour to access patient records.')
+      setEmergencyPatientAddress('')
+      setEmergencyReason('')
+
+      // Start countdown timer
+      let secondsRemaining = 3600
+      const interval = setInterval(() => {
+        secondsRemaining--
+        if (secondsRemaining <= 0) {
+          clearInterval(interval)
+          setEmergencyAccessLog(prev => 
+            prev.map((log, idx) => 
+              idx === updated.length - 1 ? { ...log, isExpired: true, timeRemaining: '00:00' } : log
+            )
+          )
+        } else {
+          const minutes = Math.floor(secondsRemaining / 60)
+          const seconds = secondsRemaining % 60
+          const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+          setEmergencyAccessLog(prev => 
+            prev.map((log, idx) => 
+              idx === updated.length - 1 ? { ...log, timeRemaining: timeStr } : log
+            )
+          )
+        }
+      }, 1000)
+
+      setTimeout(() => {
+        setSuccess('')
+      }, 5000)
+    } catch (err) {
+      setError('Failed to request emergency access: ' + String(err))
+      console.error('[v0] Emergency access error:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen px-4 py-12">
       <div className="max-w-6xl mx-auto">
@@ -409,6 +503,7 @@ export default function DoctorDashboard() {
             <TabsTrigger value="patients">My Patients</TabsTrigger>
             <TabsTrigger value="upload">Upload Reports</TabsTrigger>
             <TabsTrigger value="view">Search Patients</TabsTrigger>
+            <TabsTrigger value="emergency" className="text-red-600">Emergency Access</TabsTrigger>
           </TabsList>
 
           {/* My Patients Tab - Shows patients who granted access */}
@@ -805,6 +900,107 @@ export default function DoctorDashboard() {
                   <p className="text-muted-foreground">Search for patients to view their records</p>
                   <p className="text-sm text-muted-foreground mt-2">Enter a wallet address or patient name above</p>
                 </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Emergency Access Tab */}
+          <TabsContent value="emergency" className="space-y-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-red-600">Emergency Access</h2>
+                <p className="text-muted-foreground">Request break-glass access to patient records in critical situations (1-hour limit)</p>
+              </div>
+            </div>
+
+            <Alert className="bg-red-500/10 border-red-500/30 rounded-lg p-4">
+              <AlertCircle className="h-5 w-5 text-red-600 mr-3" />
+              <div className="flex flex-col gap-2">
+                <span className="font-semibold text-red-700">Critical Access Only</span>
+                <span className="text-sm text-red-700">Emergency access is limited to 1 hour and all requests are logged for audit compliance. Use only when immediate access is medically necessary.</span>
+              </div>
+            </Alert>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Patient Address</label>
+                <input
+                  type="text"
+                  placeholder="Enter patient wallet address"
+                  value={emergencyPatientAddress}
+                  onChange={(e) => setEmergencyPatientAddress(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Clinical Reason</label>
+                <textarea
+                  placeholder="Describe the medical emergency and why immediate access is needed..."
+                  value={emergencyReason}
+                  onChange={(e) => setEmergencyReason(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                  rows={5}
+                />
+              </div>
+
+              <Button 
+                onClick={handleRequestEmergencyAccess}
+                disabled={!emergencyPatientAddress || !emergencyReason || isLoading}
+                className="w-full bg-red-600 hover:bg-red-700 text-white"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader className="w-4 h-4 mr-2 animate-spin" />
+                    Requesting Access...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4 mr-2" />
+                    Request Emergency Access (1 Hour)
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-600" />
+                Emergency Access Audit Log
+              </h3>
+              
+              {emergencyAccessLog.length === 0 ? (
+                <Card className="p-8 text-center">
+                  <Shield className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground">No emergency access requests yet</p>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {emergencyAccessLog.map((log, idx) => (
+                    <Card key={idx} className="p-4 border-l-4 border-l-red-500">
+                      <div className="grid grid-cols-2 gap-4 mb-3">
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground">Patient Address</p>
+                          <p className="text-sm font-mono truncate">{log.patientAddress}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground">Time Remaining</p>
+                          <p className="text-sm font-semibold text-red-600">{log.timeRemaining}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Reason</p>
+                        <p className="text-sm text-muted-foreground italic">"{log.reason}"</p>
+                      </div>
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t text-xs text-muted-foreground">
+                        <span>{log.requestTime}</span>
+                        <Badge variant={log.isExpired ? "secondary" : "destructive"}>
+                          {log.isExpired ? 'Expired' : 'Active'}
+                        </Badge>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
               )}
             </div>
           </TabsContent>
