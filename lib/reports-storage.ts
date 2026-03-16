@@ -90,6 +90,7 @@ export function countIPFSReports(patientAddress: string): number {
 export function downloadReportAsJSON(report: StoredReport): void {
   try {
     console.log('[v0] Starting JSON download for:', report.reportTitle);
+    alert('[v0] Download button clicked - Starting JSON generation...');
     
     // Create JSON structure with all report data
     const reportJSON = {
@@ -165,6 +166,7 @@ export function downloadReportAsJSON(report: StoredReport): void {
 export function viewReportFromIPFS(report: StoredReport): void {
   try {
     console.log('[v0] Opening IPFS viewer for:', report.reportTitle);
+    alert('[v0] View button clicked - Opening IPFS: ' + report.ipfsHash);
     const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${report.ipfsHash}`;
     
     // Open the IPFS URL in a new window to view the actual content
@@ -172,6 +174,7 @@ export function viewReportFromIPFS(report: StoredReport): void {
     console.log('[v0] Opened IPFS URL:', ipfsUrl);
   } catch (error) {
     console.error('[v0] Error viewing IPFS:', error);
+    alert('[v0] Error viewing IPFS: ' + String(error));
   }
 }
 

@@ -612,7 +612,13 @@ export default function DoctorDashboard() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {reports.map(report => (
+                {reports.map(report => {
+                  console.log('[v0] Rendering report:', {
+                    title: report.reportTitle,
+                    hasIpfsHash: !!report.ipfsHash,
+                    ipfsHash: report.ipfsHash
+                  });
+                  return (
                   <Card key={report.id} className="p-6 hover:shadow-lg transition">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
@@ -661,7 +667,8 @@ export default function DoctorDashboard() {
                       </div>
                     )}
                   </Card>
-                ))}
+                )
+                })}
               </div>
             )}
             </div>
