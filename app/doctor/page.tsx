@@ -73,14 +73,30 @@ export default function DoctorDashboard() {
     timeRemaining: string
     isExpired: boolean
   }>>([])
+  const [emergencyAccessRecords, setEmergencyAccessRecords] = useState<any[]>([])
 
-  // Load emergency access log on mount
+  // Load emergency access log and records on mount
   useEffect(() => {
     const stored = localStorage.getItem('doctor_emergency_access_log')
     if (stored) {
       try {
         const parsed = JSON.parse(stored)
         setEmergencyAccessLog(parsed)
+        
+        // Load records for all patients with active emergency access
+        const records: any[] = []
+        parsed.forEach((log: any) => {
+          if (!log.isExpired) {
+            const patientReports = getPatientReports(log.patientAddress)
+            records.push(...patientReports.map(r => ({
+              ...r,
+              emergencyAccess: true,
+              accessedAt: log.requestTime,
+              accessReason: log.reason
+            })))
+          }
+        })
+        setEmergencyAccessRecords(records)
       } catch (e) {
         console.log('[v0] Failed to parse emergency access log')
       }
@@ -421,6 +437,16 @@ export default function DoctorDashboard() {
       const updated = [...emergencyAccessLog, newLog]
       setEmergencyAccessLog(updated)
       localStorage.setItem('doctor_emergency_access_log', JSON.stringify(updated))
+
+      // Load records for the newly accessed patient
+      const patientReports = getPatientReports(emergencyPatientAddress)
+      const newRecords = patientReports.map(r => ({
+        ...r,
+        emergencyAccess: true,
+        accessedAt: now.toLocaleString(),
+        accessReason: emergencyReason
+      }))
+      setEmergencyAccessRecords(prev => [...prev, ...newRecords])
 
       // Log emergency access for audit
       logFileUpload(
@@ -1003,8 +1029,105 @@ export default function DoctorDashboard() {
                 </div>
               )}
             </div>
+
+            {/* Emergency Access Records Section */}
+            <div className="mt-12 pt-8 border-t">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-orange-600" />
+                Records Accessible Via Emergency Access
+              </h3>
+              
+              {emergencyAccessRecords.length === 0 ? (
+                <Card className="p-8 text-center">
+                  <FileText className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground">No records accessible via emergency access</p>
+                  <p className="text-sm text-muted-foreground mt-2">Records will appear here once you request emergency access for a patient</p>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {emergencyAccessRecords.map((record, idx) => (
+                    <Card key={idx} className="p-4 border-l-4 border-l-orange-500 hover:shadow-md transition">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="font-semibold text-lg">{record.reportTitle}</h4>
+                            <Badge className="bg-orange-600 hover:bg-orange-700">Emergency</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">{record.description}</p>
+                          <div className="grid grid-cols-2 gap-4 text-xs">
+                            <div>
+                              <p className="font-medium text-muted-foreground">Patient</p>
+                              <p className="font-mono">{record.patientName}</p>
+                            </div>
+                            <div>
+                              <p className="font-medium text-muted-foreground">Uploaded</p>
+                              <p>{record.uploadedAt}</p>
+                            </div>
+                            <div className="col-span-2">
+                              <p className="font-medium text-muted-foreground mb-1">Access Reason</p>
+                              <p className="italic text-muted-foreground">"{record.accessReason}"</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2 ml-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              console.log('[v0] View clicked:', record);
+                              alert('Opening IPFS: ' + record.ipfsHash);
+                              try {
+                                window.open(`https://gateway.pinata.cloud/ipfs/${record.ipfsHash}`, '_blank');
+                              } catch(e) {
+                                alert('Error: ' + String(e));
+                              }
+                            }}
+                            className="gap-1 whitespace-nowrap"
+                          >
+                            <Eye className="w-3 h-3" />
+                            View
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              console.log('[v0] Download clicked:', record);
+                              alert('Downloading JSON for: ' + record.reportTitle);
+                              try {
+                                const json = JSON.stringify({
+                                  title: record.reportTitle,
+                                  ipfsHash: record.ipfsHash,
+                                  uploadedAt: record.uploadedAt,
+                                  patientName: record.patientName,
+                                  doctorName: record.doctorName,
+                                  emergencyAccessReason: record.accessReason,
+                                  emergencyAccessedAt: record.accessedAt
+                                }, null, 2);
+                                const blob = new Blob([json], { type: 'application/json' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = record.reportTitle + '.json';
+                                a.click();
+                                URL.revokeObjectURL(url);
+                                alert('Download complete!');
+                              } catch(e) {
+                                alert('Error downloading: ' + String(e));
+                              }
+                            }}
+                            className="gap-1 whitespace-nowrap"
+                          >
+                            <Download className="w-3 h-3" />
+                            JSON
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
           </TabsContent>
-        </Tabs>
 
         {/* Patient Records Modal */}
         {selectedPatient && !selectedRecord && (
