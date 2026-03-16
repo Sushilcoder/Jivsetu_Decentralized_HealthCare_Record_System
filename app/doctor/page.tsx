@@ -1128,6 +1128,7 @@ export default function DoctorDashboard() {
               )}
             </div>
           </TabsContent>
+        </Tabs>
 
         {/* Patient Records Modal */}
         {selectedPatient && !selectedRecord && (
@@ -1439,6 +1440,5 @@ export default function DoctorDashboard() {
           </DialogContent>
         </Dialog>
       </div>
-    </div>
-  )
-}
+    )
+  }
