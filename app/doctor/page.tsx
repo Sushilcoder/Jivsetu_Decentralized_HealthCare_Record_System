@@ -21,6 +21,7 @@ import { logFileUpload, logFileView, logFileDownload } from '@/lib/access-log'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { validateFileUpload, downloadFile, generateDownloadFilename } from '@/lib/file-handler'
+import { EmergencyAccessButton } from '@/components/emergency-access-button'
 
 interface UploadedReport {
   id: string
@@ -489,6 +490,12 @@ export default function DoctorDashboard() {
                         <Upload className="w-4 h-4" />
                         Upload Record
                       </Button>
+                      <EmergencyAccessButton
+                        doctorAddress={user?.address || ''}
+                        doctorName={session?.username || 'Doctor'}
+                        patientAddress={patient.patientAddress}
+                        patientName={patient.patientName}
+                      />
                     </div>
                   </Card>
                 ))}
