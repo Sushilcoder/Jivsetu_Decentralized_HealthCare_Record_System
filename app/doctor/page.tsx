@@ -649,7 +649,15 @@ export default function DoctorDashboard() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => viewReportFromIPFS(report)}
+                          onClick={() => {
+                            console.log('[v0] View clicked:', report);
+                            alert('Opening IPFS: ' + report.ipfsHash);
+                            try {
+                              window.open(`https://gateway.pinata.cloud/ipfs/${report.ipfsHash}`, '_blank');
+                            } catch(e) {
+                              alert('Error: ' + String(e));
+                            }
+                          }}
                           className="gap-1"
                         >
                           <Eye className="w-3 h-3" />
@@ -658,7 +666,29 @@ export default function DoctorDashboard() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => downloadReportAsJSON(report)}
+                          onClick={() => {
+                            console.log('[v0] Download clicked:', report);
+                            alert('Downloading JSON for: ' + report.reportTitle);
+                            try {
+                              const json = JSON.stringify({
+                                title: report.reportTitle,
+                                ipfsHash: report.ipfsHash,
+                                uploadedAt: report.uploadedAt,
+                                patientName: report.patientName,
+                                doctorName: report.doctorName
+                              }, null, 2);
+                              const blob = new Blob([json], { type: 'application/json' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = report.reportTitle + '.json';
+                              a.click();
+                              URL.revokeObjectURL(url);
+                              alert('Download complete!');
+                            } catch(e) {
+                              alert('Error downloading: ' + String(e));
+                            }
+                          }}
                           className="gap-1"
                         >
                           <Download className="w-3 h-3" />

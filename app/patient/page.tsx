@@ -485,10 +485,12 @@ export default function PatientDashboard() {
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          const storedReports = getPatientReports(user?.address || '');
-                          const storedReport = storedReports.find(r => r.ipfsHash === report.hash);
-                          if (storedReport) {
-                            viewReportFromIPFS(storedReport);
+                          console.log('[v0] Patient View clicked:', report);
+                          alert('Opening IPFS: ' + report.hash);
+                          try {
+                            window.open(`https://gateway.pinata.cloud/ipfs/${report.hash}`, '_blank');
+                          } catch(e) {
+                            alert('Error: ' + String(e));
                           }
                         }}
                         className="gap-1"
@@ -500,10 +502,32 @@ export default function PatientDashboard() {
                         variant="outline" 
                         size="sm" 
                         onClick={() => {
-                          const storedReports = getPatientReports(user?.address || '');
-                          const storedReport = storedReports.find(r => r.ipfsHash === report.hash);
-                          if (storedReport) {
-                            downloadReportAsJSON(storedReport);
+                          console.log('[v0] Patient Download clicked:', report);
+                          alert('Downloading JSON');
+                          try {
+                            const storedReports = getPatientReports(user?.address || '');
+                            const storedReport = storedReports.find(r => r.ipfsHash === report.hash);
+                            if (storedReport) {
+                              const json = JSON.stringify({
+                                title: storedReport.reportTitle,
+                                ipfsHash: storedReport.ipfsHash,
+                                uploadedAt: storedReport.uploadedAt,
+                                patientName: storedReport.patientName,
+                                doctorName: storedReport.doctorName
+                              }, null, 2);
+                              const blob = new Blob([json], { type: 'application/json' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = storedReport.reportTitle + '.json';
+                              a.click();
+                              URL.revokeObjectURL(url);
+                              alert('Download complete!');
+                            } else {
+                              alert('Report not found');
+                            }
+                          } catch(e) {
+                            alert('Error: ' + String(e));
                           }
                         }}
                         className="gap-1"
